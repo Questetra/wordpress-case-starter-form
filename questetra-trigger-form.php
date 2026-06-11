@@ -4,7 +4,7 @@
  * Description: 【リファレンス実装】メッセージ開始イベント (HTTP) を kick する専用フォームを、ショートコード [qtf_form] で固定ページ／投稿に埋め込みます。送信はサーバサイドで行うため URL と API Key はページソースに露出しません。対応データ型は「文字(1行)」「文字(複数行)」「ファイル」。項目は先頭の設定配列で増減でき、バリデーションエラーは各フィールドごとに表示します。
  * Version:     2.5.0
  * Author:      Questetra (reference implementation)
- * License:     Apache-2.0
+ * License:     MIT
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
