@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Questetra Case Starter Form (Reference)
- * Description: 【リファレンス実装】メッセージ開始イベント (HTTP) を kick する専用フォームを、ショートコード [qscf_form] で固定ページ／投稿に埋め込みます。送信はサーバサイドで行うため URL と API Key はページソースに露出しません。対応データ型は「文字(1行)」「文字(複数行)」「ファイル」。項目は先頭の設定配列で増減でき、バリデーションエラーは各フィールドごとに表示します。
- * Version:     2.5.0
+ * Description: 【リファレンス実装】QSCF_PRESETS に登録した名前付き preset をショートコード [qscf_form preset="名前"] で出し分け、Questetra BPM Suite のメッセージ開始イベント (HTTP) を kick します。秘密と接続先は preset レジストリ＝サーバ側に残し、コンテンツ層（ショートコード属性）に渡るのは preset 名だけ。送信はサーバサイドで行うため URL と API Key はページソースに露出しません。
+ * Version:     3.0.0
  * Author:      Questetra (reference implementation)
  * License:     MIT
  */
@@ -10,76 +10,132 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /* ============================================================================
- *  ■■■ 設定：通常はこのブロックだけ編集すれば動きます ■■■
+ *  ■■■ 設定：QSCF_PRESETS に preset を登録するだけで複数フォームに対応 ■■■
+ *
+ *  不変条件：秘密と接続先（endpoint / key）は preset レジストリ＝サーバ側に残し、
+ *  コンテンツ層（ショートコード属性）に渡るのは preset 名だけ。
+ *
+ *  API Key は公開リポジトリへの混入を避けるため、wp-config.php への記述を推奨:
+ *    define( 'QSCF_CONTACT_KEY', 'xxxx' );
+ *
+ *  ショートコード例（固定ページ・投稿の本文に貼る）:
+ *    [qscf_form preset="contact"]
+ *    [qscf_form preset="apply" thanks="申請を受け付けました。"]
+ *
  *  これより下（ロジック本体）は触らなくてOKです。
  * ========================================================================== */
 
-// 開始イベントの起動 URL（末尾の ?key= は付けない）※自分のイベントURLに置き換えてください
-define( 'QSCF_ENDPOINT_URL', 'https://template.questetra.net/System/Event/MessageStart/1823/11/start' );
+define( 'QSCF_PRESETS', array(
 
-// API Key（サーバサイドでのみ使用。ページソースには出ません）
-//   ↓ 自分の開始イベントのキーに置き換えてください（公開リポジトリにそのまま載せないこと）。
-define( 'QSCF_API_KEY', 'PUT-YOUR-API-KEY-HERE' );
+	/*
+	 * preset 名 'contact' の例。
+	 * 必須キー: endpoint, key, fields
+	 * 任意キー: thanks（送信成功メッセージ）, max_file_bytes（1ファイルの上限バイト数）
+	 *
+	 * API Key は wp-config.php に  define( 'QSCF_CONTACT_KEY', 'xxxx' );  と書いて参照推奨。
+	 */
+	'contact' => array(
+		'endpoint'       => 'https://template.questetra.net/System/Event/MessageStart/1823/11/start',
+		'key'            => defined( 'QSCF_CONTACT_KEY' ) ? QSCF_CONTACT_KEY : 'PUT-YOUR-API-KEY-HERE',
+		'fields'         => array(
+			array( 'param' => 'title',     'label' => '件名',       'type' => 'text',     'required' => false ),
+			array( 'param' => 'q_string0', 'label' => '文字単一行', 'type' => 'text',     'required' => true ),
+			array( 'param' => 'q_string1', 'label' => '文字複数行', 'type' => 'textarea', 'required' => true ),
+			array( 'param' => 'q_file11',  'label' => 'ファイル',   'type' => 'file',     'required' => true ),
+		),
+		'thanks'         => 'ご送信ありがとうございました。ケースを開始しました。',
+		'max_file_bytes' => 10 * 1024 * 1024,
+	),
 
-/* --- 送信するフォーム項目（受信パラメータに合わせて増減する） --------------
- *  各項目: array(
- *    'param'    => Questetra 側の受信パラメータ名（半角英数字・_ のみ。action/qscf_* と重複させない）
- *    'label'    => 画面に出すラベル
- *    'type'     => 'text'（文字1行）/ 'textarea'（文字複数行）/ 'file'（ファイル）
- *    'required' => true で必須（text/textarea は入力必須、file は「添付そのものが必須」）。省略時は任意
- *  )
- *  ※ ファイルは常に複数添付可。個数の上限/下限（○個以上 等）は Questetra 側の項目設定で
- *     検証され、エラーは該当フィールドに表示されます（本プラグインは個数を持ちません）。
- * ------------------------------------------------------------------------- */
-define( 'QSCF_FIELDS', array(
-	array( 'param' => 'title',     'label' => '件名',       'type' => 'text',     'required' => false ),
-	array( 'param' => 'q_string0', 'label' => '文字単一行', 'type' => 'text',     'required' => true ),
-	array( 'param' => 'q_string1', 'label' => '文字複数行', 'type' => 'textarea', 'required' => true ),
-	array( 'param' => 'q_file11',  'label' => 'ファイル',   'type' => 'file',     'required' => true ),
+	/*
+	 * 追加 preset の例（コメントアウト済み）。複製して preset 名と内容を変更してください。
+	 *
+	 * 'apply' => array(
+	 *     'endpoint'       => 'https://your-tenant.questetra.net/.../start',
+	 *     'key'            => defined( 'QSCF_APPLY_KEY' ) ? QSCF_APPLY_KEY : '',
+	 *     'fields'         => array(
+	 *         array( 'param' => 'title', 'label' => '申請タイトル', 'type' => 'text', 'required' => true ),
+	 *     ),
+	 * ),
+	 */
+
 ) );
-
-// 1ファイルあたりの上限サイズ（バイト）
-define( 'QSCF_MAX_FILE_BYTES', 10 * 1024 * 1024 );
-
-// 送信成功時のサンクスメッセージ
-define( 'QSCF_THANKS_MESSAGE', 'ご送信ありがとうございました。ケースを開始しました。' );
 
 /* ============================================================================
  *  ■■■ これより下はロジック本体：通常は編集不要 ■■■
  * ========================================================================== */
 
+define( 'QSCF_DEFAULT_THANKS',         'ご送信ありがとうございました。ケースを開始しました。' );
+define( 'QSCF_DEFAULT_MAX_FILE_BYTES', 10 * 1024 * 1024 );
+
 add_shortcode( 'qscf_form', 'qscf_render_shortcode' );
 
 function qscf_render_shortcode( $atts ) {
+	$atts = shortcode_atts( array(
+		'preset' => '',
+		'thanks' => '',
+	), $atts, 'qscf_form' );
+
+	$preset_name = sanitize_key( $atts['preset'] );
+	if ( '' === $preset_name ) {
+		$preset_name = 'default';
+	}
+
+	$presets = defined( 'QSCF_PRESETS' ) && is_array( QSCF_PRESETS ) ? QSCF_PRESETS : array();
+
+	if ( ! array_key_exists( $preset_name, $presets ) ) {
+		if ( current_user_can( 'manage_options' ) ) {
+			$msg = '' === $atts['preset']
+				? '[qscf_form] preset 未指定（かつ "default" も未登録）。QSCF_PRESETS を確認してください。'
+				: '[qscf_form] preset="' . $atts['preset'] . '" が QSCF_PRESETS に見つかりません。';
+			return '<p class="qscf-notice" style="border:1px solid #c00;padding:.5em;color:#c00;">'
+				. esc_html( $msg ) . '</p>';
+		}
+		return '';
+	}
+
+	$preset = $presets[ $preset_name ];
+
+	// thanks のみショートコード属性から上書き可（endpoint / key / fields はコンテンツ層から受けない）
+	if ( '' !== $atts['thanks'] ) {
+		$preset['thanks'] = $atts['thanks'];
+	}
+
+	// 送信成功後のサンクス画面
 	if ( isset( $_GET['qscf_status'] ) && 'success' === $_GET['qscf_status'] && ! empty( $_GET['qscf_txn'] ) ) {
 		$txn  = sanitize_text_field( wp_unslash( $_GET['qscf_txn'] ) );
 		$data = get_transient( 'qscf_txn_' . $txn );
-		if ( false !== $data ) {
+		if ( is_array( $data ) && isset( $data['_preset'] ) && $preset_name === $data['_preset'] ) {
 			delete_transient( 'qscf_txn_' . $txn );
-			return qscf_render_success( $data );
+			return qscf_render_success( $data['summary'], $preset );
 		}
 	}
+
+	// バリデーションエラーの再表示
 	$errors = array();
 	$old    = array();
 	if ( isset( $_GET['qscf_status'] ) && 'error' === $_GET['qscf_status'] && ! empty( $_GET['qscf_txn'] ) ) {
 		$txn = sanitize_text_field( wp_unslash( $_GET['qscf_txn'] ) );
 		$e   = get_transient( 'qscf_err_' . $txn );
-		if ( is_array( $e ) ) {
+		if ( is_array( $e ) && isset( $e['_preset'] ) && $preset_name === $e['_preset'] ) {
 			delete_transient( 'qscf_err_' . $txn );
 			$errors = isset( $e['errors'] ) ? $e['errors'] : array();
 			$old    = isset( $e['old'] ) ? $e['old'] : array();
 		}
 	}
-	return qscf_render_form( $errors, $old );
+
+	return qscf_render_form( $preset_name, $preset, $errors, $old );
 }
 
-function qscf_render_form( $errors = array(), $old = array() ) {
+function qscf_render_form( $preset_name, $preset, $errors = array(), $old = array() ) {
 	$action_url = esc_url( admin_url( 'admin-post.php' ) );
 	$nonce      = wp_create_nonce( 'qscf_submit' );
 
 	$return_url = get_permalink();
 	if ( ! $return_url ) { $return_url = home_url( '/' ); }
 	$return_url = esc_url( $return_url );
+
+	$fields = isset( $preset['fields'] ) ? $preset['fields'] : array();
 
 	ob_start();
 
@@ -91,8 +147,9 @@ function qscf_render_form( $errors = array(), $old = array() ) {
 		<input type="hidden" name="action" value="qscf_submit" />
 		<input type="hidden" name="qscf_nonce" value="<?php echo esc_attr( $nonce ); ?>" />
 		<input type="hidden" name="qscf_return" value="<?php echo $return_url; ?>" />
+		<input type="hidden" name="qscf_preset" value="<?php echo esc_attr( $preset_name ); ?>" />
 
-		<?php foreach ( QSCF_FIELDS as $fld ) :
+		<?php foreach ( $fields as $fld ) :
 			$param   = $fld['param'];
 			$param_a = esc_attr( $param );
 			$label   = esc_html( $fld['label'] );
@@ -129,14 +186,15 @@ function qscf_render_form( $errors = array(), $old = array() ) {
 	return ob_get_clean();
 }
 
-function qscf_render_success( $data ) {
+function qscf_render_success( $summary, $preset ) {
+	$thanks = ! empty( $preset['thanks'] ) ? $preset['thanks'] : QSCF_DEFAULT_THANKS;
 	ob_start();
 	?>
 	<div class="qscf-success-wrapper">
-		<p class="qscf-thanks"><?php echo esc_html( QSCF_THANKS_MESSAGE ); ?></p>
+		<p class="qscf-thanks"><?php echo esc_html( $thanks ); ?></p>
 		<h3 class="qscf-submitted-heading">送信内容</h3>
 		<table class="qscf-submitted-table"><tbody>
-		<?php foreach ( $data as $label => $value ) : ?>
+		<?php foreach ( $summary as $label => $value ) : ?>
 			<tr><th><?php echo esc_html( $label ); ?></th><td><?php echo esc_html( $value ); ?></td></tr>
 		<?php endforeach; ?>
 		</tbody></table>
@@ -152,9 +210,25 @@ function qscf_handle_submit() {
 	$return = isset( $_POST['qscf_return'] ) ? esc_url_raw( wp_unslash( $_POST['qscf_return'] ) ) : home_url();
 	$txn    = wp_generate_password( 16, false );
 
-	if ( ! isset( $_POST['qscf_nonce'] ) || ! wp_verify_nonce( $_POST['qscf_nonce'], 'qscf_submit' ) ) {
-		qscf_redirect_error( $return, $txn, array( '_general' => 'セッションの有効期限が切れました。もう一度お試しください。' ), array() );
+	// CSRF チェック
+	if ( ! isset( $_POST['qscf_nonce'] ) || ! wp_verify_nonce( wp_unslash( $_POST['qscf_nonce'] ), 'qscf_submit' ) ) {
+		wp_die(
+			'セッションの有効期限が切れました。ブラウザの戻るボタンでフォームに戻り、もう一度お試しください。',
+			'',
+			array( 'back_link' => true )
+		);
 	}
+
+	// preset のホワイトリスト検証（クライアントから受け取るのは名前だけ。key / endpoint はここで引く）
+	$preset_name = isset( $_POST['qscf_preset'] ) ? sanitize_key( wp_unslash( $_POST['qscf_preset'] ) ) : '';
+	$presets     = defined( 'QSCF_PRESETS' ) && is_array( QSCF_PRESETS ) ? QSCF_PRESETS : array();
+	if ( '' === $preset_name || ! array_key_exists( $preset_name, $presets ) ) {
+		wp_die( '不正なリクエストです（preset 不明）。', '', array( 'back_link' => true ) );
+	}
+
+	$preset         = $presets[ $preset_name ];
+	$fields         = isset( $preset['fields'] )         ? $preset['fields']         : array();
+	$max_file_bytes = isset( $preset['max_file_bytes'] ) ? (int) $preset['max_file_bytes'] : QSCF_DEFAULT_MAX_FILE_BYTES;
 
 	$errors      = array();
 	$old         = array();
@@ -162,7 +236,7 @@ function qscf_handle_submit() {
 	$file_items  = array();
 	$summary     = array();
 
-	foreach ( QSCF_FIELDS as $fld ) {
+	foreach ( $fields as $fld ) {
 		$param = $fld['param'];
 		$label = $fld['label'];
 
@@ -186,7 +260,7 @@ function qscf_handle_submit() {
 					if ( UPLOAD_ERR_OK !== $ff['error'][ $i ] || '' === $ff['name'][ $i ] ) {
 						continue;
 					}
-					if ( $ff['size'][ $i ] > QSCF_MAX_FILE_BYTES ) {
+					if ( $ff['size'][ $i ] > $max_file_bytes ) {
 						$too_big = true;
 						continue;
 					}
@@ -199,7 +273,7 @@ function qscf_handle_submit() {
 				}
 			}
 			if ( $too_big ) {
-				$errors[ $param ] = '1ファイルあたり ' . size_format( QSCF_MAX_FILE_BYTES ) . ' 以下にしてください。';
+				$errors[ $param ] = '1ファイルあたり ' . size_format( $max_file_bytes ) . ' 以下にしてください。';
 			} elseif ( ! empty( $fld['required'] ) && empty( $collected ) ) {
 				$errors[ $param ] = '「' . $label . '」を添付してください。';
 			}
@@ -213,13 +287,13 @@ function qscf_handle_submit() {
 
 	// プラグイン側バリデーションでエラーがあれば、まとめて差し戻し
 	if ( ! empty( $errors ) ) {
-		qscf_redirect_error( $return, $txn, $errors, $old );
+		qscf_redirect_error( $return, $txn, $preset_name, $errors, $old );
 	}
 
 	// Questetra へ送信（個数などの詳細バリデーションは Questetra 側で行われる）
 	$boundary = wp_generate_password( 24, false );
 	$body     = qscf_build_multipart( $boundary, $text_fields, $file_items );
-	$endpoint = add_query_arg( 'key', QSCF_API_KEY, QSCF_ENDPOINT_URL );
+	$endpoint = add_query_arg( 'key', $preset['key'], $preset['endpoint'] );
 	$response = wp_remote_post( $endpoint, array(
 		'timeout' => 30,
 		'headers' => array( 'Content-Type' => 'multipart/form-data; boundary=' . $boundary ),
@@ -227,17 +301,17 @@ function qscf_handle_submit() {
 	) );
 
 	if ( is_wp_error( $response ) ) {
-		qscf_redirect_error( $return, $txn, array( '_general' => '送信エラー: ' . $response->get_error_message() ), $old );
+		qscf_redirect_error( $return, $txn, $preset_name, array( '_general' => '送信エラー: ' . $response->get_error_message() ), $old );
 	}
 
 	$code = (int) wp_remote_retrieve_response_code( $response );
 	if ( $code < 200 || $code >= 400 ) {
-		$errors = qscf_parse_questetra_errors( wp_remote_retrieve_body( $response ), $code );
-		qscf_redirect_error( $return, $txn, $errors, $old );
+		$errors = qscf_parse_questetra_errors( wp_remote_retrieve_body( $response ), $code, $fields );
+		qscf_redirect_error( $return, $txn, $preset_name, $errors, $old );
 	}
 
 	$summary['ケースID'] = trim( wp_remote_retrieve_body( $response ) );
-	set_transient( 'qscf_txn_' . $txn, $summary, 5 * MINUTE_IN_SECONDS );
+	set_transient( 'qscf_txn_' . $txn, array( '_preset' => $preset_name, 'summary' => $summary ), 5 * MINUTE_IN_SECONDS );
 	wp_safe_redirect( add_query_arg( array( 'qscf_status' => 'success', 'qscf_txn' => $txn ), $return ) );
 	exit;
 }
@@ -246,11 +320,11 @@ function qscf_handle_submit() {
  * Questetra のバリデーションエラー XML を param => message に変換。
  * 受信パラメータ名に一致する <key> はそのフィールドへ、それ以外は _general へ。
  */
-function qscf_parse_questetra_errors( $xml, $code ) {
+function qscf_parse_questetra_errors( $xml, $code, $fields ) {
 	$errors  = array();
 	$general = array();
 	$params  = array();
-	foreach ( QSCF_FIELDS as $fld ) { $params[] = $fld['param']; }
+	foreach ( $fields as $fld ) { $params[] = $fld['param']; }
 
 	if ( $xml && preg_match_all( '/<error>(.*?)<\/error>/s', $xml, $blocks ) ) {
 		foreach ( $blocks[1] as $blk ) {
@@ -294,8 +368,8 @@ function qscf_build_multipart( $boundary, $fields, $file_items ) {
 	return $body;
 }
 
-function qscf_redirect_error( $return, $txn, $errors, $old ) {
-	set_transient( 'qscf_err_' . $txn, array( 'errors' => $errors, 'old' => $old ), 5 * MINUTE_IN_SECONDS );
+function qscf_redirect_error( $return, $txn, $preset_name, $errors, $old ) {
+	set_transient( 'qscf_err_' . $txn, array( '_preset' => $preset_name, 'errors' => $errors, 'old' => $old ), 5 * MINUTE_IN_SECONDS );
 	wp_safe_redirect( add_query_arg( array( 'qscf_status' => 'error', 'qscf_txn' => $txn ), $return ) );
 	exit;
 }
