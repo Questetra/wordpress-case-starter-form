@@ -18,12 +18,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 define( 'QSCF_ENDPOINT_URL', 'https://template.questetra.net/System/Event/MessageStart/1823/11/start' );
 
 // API Key（サーバサイドでのみ使用。ページソースには出ません）
-//   ↓ 自分の開始イベントのキーに置き換えてください。
-//   公開リポジトリ等に載せる場合は直書きせず、wp-config.php 等から読む形を推奨:
-//     例) wp-config.php に  define( 'QSCF_API_KEY', 'xxxxx' );  と書き、ここでは下記を削除。
-if ( ! defined( 'QSCF_API_KEY' ) ) {
-	define( 'QSCF_API_KEY', 'PUT-YOUR-API-KEY-HERE' );
-}
+//   ↓ 自分の開始イベントのキーに置き換えてください（公開リポジトリにそのまま載せないこと）。
+define( 'QSCF_API_KEY', 'PUT-YOUR-API-KEY-HERE' );
 
 /* --- 送信するフォーム項目（受信パラメータに合わせて増減する） --------------
  *  各項目: array(
