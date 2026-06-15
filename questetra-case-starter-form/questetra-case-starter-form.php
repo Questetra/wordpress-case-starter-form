@@ -15,11 +15,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  *  不変条件：秘密と接続先（endpoint / key）は preset レジストリ＝サーバ側に残し、
  *  コンテンツ層（ショートコード属性）に渡るのは preset 名だけ。
  *
- *  API Key は各 preset の 'key' に直接記述します（このサンプルはプラグインを
- *  private リポジトリで管理する前提）。public リポジトリで管理する場合などは、
- *  wp-config.php に define( 'QSCF_CONTACT_KEY', 'xxxx' ); と定義し 'key' から
- *  参照して秘密を分離する方法もあります（おまけ。WordPress.com では通常 wp-config.php
- *  を編集できないため、その場合は直書きを使ってください）。
+ *  API Key は preset の 'key' に直接記述します（private リポジトリでの管理を想定。
+ *  WordPress.com 等 wp-config.php を編集できない環境を前提とした書き方です）。
+ *    （おまけ）wp-config.php を編集できる環境なら、そこに
+ *      define( 'QSCF_CONTACT_KEY', 'xxxx' );
+ *    と書き、'key' => defined( 'QSCF_CONTACT_KEY' ) ? QSCF_CONTACT_KEY : '' のように
+ *    参照してキーを分離することもできます（public リポジトリで管理する場合など）。
  *
  *  ショートコード例（固定ページ・投稿の本文に貼る）:
  *    [qscf_form preset="contact"]
@@ -35,11 +36,11 @@ define( 'QSCF_PRESETS', array(
 	 * 必須キー: endpoint, key, fields
 	 * 任意キー: thanks（送信成功メッセージ）, max_file_bytes（1ファイルの上限バイト数）
 	 *
-	 * 'key' には自分の開始イベントの API キーを直接記述します（PUT-YOUR-API-KEY-HERE を置き換え）。
+	 * API Key は 'key' に直接記述（private リポジトリ前提）。
 	 */
 	'contact' => array(
 		'endpoint'       => 'https://template.questetra.net/System/Event/MessageStart/1823/11/start',
-		'key'            => 'PUT-YOUR-API-KEY-HERE',  // ← 自分の API キーに置き換え
+		'key'            => 'PUT-YOUR-API-KEY-HERE',  // 自分の API キーに置き換え
 		'fields'         => array(
 			array( 'param' => 'title',     'label' => '件名',       'type' => 'text',     'required' => false ),
 			array( 'param' => 'q_string0', 'label' => '文字単一行', 'type' => 'text',     'required' => true ),
