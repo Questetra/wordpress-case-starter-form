@@ -40,17 +40,7 @@ WordPress のフォームから Questetra BPM Suite の **メッセージ開始�
 
 `questetra-case-starter-form/questetra-case-starter-form.php` 冒頭の **`QSCF_PRESETS` 定義ブロックだけ**を編集します（その下のロジック本体は編集不要）。
 
-### 1. API Key を wp-config.php に定義する（推奨）
-
-```php
-// wp-config.php
-define( 'QSCF_CONTACT_KEY', 'xxxx' );  // 問い合わせフォーム用
-define( 'QSCF_APPLY_KEY',   'yyyy' );  // 申請フォーム用
-```
-
-`wp-config.php` に書いておくことで、プラグインファイルをバージョン管理に入れても秘密が漏洩しません。
-
-### 2. QSCF_PRESETS を設定する
+### 1. QSCF_PRESETS を設定する
 
 ```php
 define( 'QSCF_PRESETS', array(
@@ -58,7 +48,7 @@ define( 'QSCF_PRESETS', array(
     // preset 名 'contact'（問い合わせフォーム）
     'contact' => array(
         'endpoint'       => 'https://your-tenant.questetra.net/.../start',
-        'key'            => defined( 'QSCF_CONTACT_KEY' ) ? QSCF_CONTACT_KEY : '',
+        'key'            => 'PUT-YOUR-API-KEY-HERE',  // 自分の API キーに置き換え
         'fields'         => array(
             array( 'param' => 'title',     'label' => '件名',       'type' => 'text',     'required' => false ),
             array( 'param' => 'q_string0', 'label' => 'お名前',     'type' => 'text',     'required' => true ),
@@ -71,7 +61,7 @@ define( 'QSCF_PRESETS', array(
     // preset 名 'apply'（申請フォーム）
     'apply' => array(
         'endpoint'       => 'https://your-tenant.questetra.net/.../start',
-        'key'            => defined( 'QSCF_APPLY_KEY' ) ? QSCF_APPLY_KEY : '',
+        'key'            => 'PUT-YOUR-API-KEY-HERE',
         'fields'         => array(
             array( 'param' => 'title',    'label' => '申請タイトル', 'type' => 'text',     'required' => true ),
             array( 'param' => 'q_file11', 'label' => '添付書類',     'type' => 'file',     'required' => true ),
@@ -81,18 +71,24 @@ define( 'QSCF_PRESETS', array(
 ) );
 ```
 
+**API キーについて**
+
+`key` には API キーを直接記述します（`PUT-YOUR-API-KEY-HERE` を自分のキーに置き換え）。送信はサーバサイドで行うためページソースには出ません。プラグインを **private リポジトリで管理する前提**（`wp-config.php` を編集できない WordPress.com 等を想定）なので、直書きで問題ありません。
+
+> （おまけ）`wp-config.php` を編集できる環境では、そこにキーを定義し `'key' => defined( 'QSCF_CONTACT_KEY' ) ? QSCF_CONTACT_KEY : '',` のように参照してキーを分離することもできます（public リポジトリで管理する場合など）。
+
 #### fields の各キー
 
 | キー | 説明 |
 |------|------|
-| `param` | Questetra の受信パラメータ名（半角英数字・`_` のみ。`action` / `qscf_*` と重複させない） |
+| `param` | Questetra の受信パラメータ名（例: `title` / `q_string0` / `q_file11`） |
 | `label` | 画面に表示するラベル |
 | `type` | `text`（文字1行）/ `textarea`（文字複数行）/ `file`（ファイル） |
 | `required` | `true` で必須（text/textarea は入力必須、file は「添付そのものが必須」） |
 
 ※ ファイルは常に複数添付可です。**個数の上限・下限（○個以上 等）は Questetra 側の項目設定が検証**し、返ってきたエラーは該当フィールドの直下に表示されます。
 
-### 3. ショートコードを貼る
+### 2. ショートコードを貼る
 
 ```
 [qscf_form preset="contact"]
