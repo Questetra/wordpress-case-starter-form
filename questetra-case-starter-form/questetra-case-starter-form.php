@@ -26,7 +26,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  *    [qscf_form preset="contact"]
  *    [qscf_form preset="apply" thanks="申請を受け付けました。"]
  *
- *  これより下（ロジック本体）は触らなくてOKです。
+ *  ↓ すぐ下の QSCF_PRESETS だけを編集してください。
+ *    （さらに下の「■■■ これより下はロジック本体 ■■■」以降は触らなくてOK）
  * ========================================================================== */
 
 define( 'QSCF_PRESETS', array(
