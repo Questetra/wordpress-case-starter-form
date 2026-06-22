@@ -38,7 +38,7 @@ WordPress のフォームから Questetra BPM Suite の **メッセージ開始�
 
 ## 設定
 
-`questetra-case-starter-form/questetra-case-starter-form.php` 冒頭の **`QSCF_PRESETS` 定義ブロックだけ**を編集します。配布ファイルは同一のため行番号も固定で、**33 行目の `define( 'QSCF_PRESETS', array(`** から始まるブロックがそれです（**70 行目の `■■■ これより下はロジック本体 ■■■`** より下は編集不要）。
+`questetra-case-starter-form/questetra-case-starter-form.php` 冒頭の **`QSCF_PRESETS` 定義ブロックだけ**を編集します（ファイル内の `■■■ これより下はロジック本体 ■■■` より下は編集不要。境界はコメントで示しています）。
 
 ### 1. QSCF_PRESETS を設定する
 
